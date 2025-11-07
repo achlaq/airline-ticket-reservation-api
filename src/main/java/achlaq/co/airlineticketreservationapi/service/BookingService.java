@@ -8,16 +8,22 @@ import achlaq.co.airlineticketreservationapi.domain.repository.BookingFlightRepo
 import achlaq.co.airlineticketreservationapi.domain.repository.BookingRepo;
 import achlaq.co.airlineticketreservationapi.domain.repository.FlightRepo;
 import achlaq.co.airlineticketreservationapi.domain.repository.PassengerRepo;
-import achlaq.co.airlineticketreservationapi.web.dto.BookingResponse;
-import achlaq.co.airlineticketreservationapi.web.dto.CreateBookingRequest;
-import achlaq.co.airlineticketreservationapi.web.dto.UpdateBookingRequest;
+import achlaq.co.airlineticketreservationapi.web.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -69,6 +75,55 @@ public class BookingService {
         return new BookingResponse(bk.getPnrCode(), bk.getStatus(), bk.getTotalAmount(), bk.getId(), fl.getId());
     }
 
+    public Page<BookingListItem> search(
+            String pnr, String status,
+            LocalDate from, LocalDate to,
+            int page, int size
+    ) {
+        final LocalDateTime fromDt = (from == null) ? null : from.atStartOfDay();
+        final LocalDateTime toDt   = (to   == null) ? null : to.plusDays(1).atStartOfDay();
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        if (fromDt != null && toDt != null && !toDt.isAfter(fromDt)) {
+            return Page.empty(pageable);
+        }
+
+        List<Specification<Booking>> specs = new ArrayList<>();
+        if (pnr != null && !pnr.isBlank()) {
+            specs.add((root, q, cb) -> cb.equal(root.get("pnrCode"), pnr));
+        }
+        if (status != null && !status.isBlank()) {
+            specs.add((root, q, cb) -> cb.equal(root.get("status"), status));
+        }
+        if (fromDt != null) {
+            specs.add((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("createdDate"), fromDt));
+        }
+        if (toDt != null) {
+            specs.add((root, q, cb) -> cb.lessThan(root.get("createdDate"), toDt));
+        }
+
+        Specification<Booking> spec = Specification.allOf(specs);
+
+        return bookingRepo.findAll(spec, pageable)
+                .map(b -> new BookingListItem(
+                        b.getPnrCode(),
+                        b.getStatus(),
+                        b.getContactName(),
+                        b.getContactEmail(),
+                        b.getContactPhone(),
+                        b.getTotalAmount(),
+                        b.getCreatedDate()
+                ));
+    }
+
+
+
+    public BookingResponse get(UUID id){
+        Booking b = bookingRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        UUID flightId = bookingFlightRepo.findByBooking_Id(b.getId()).get(0).getFlight().getId();
+        return new BookingResponse(b.getPnrCode(), b.getStatus(), b.getTotalAmount(), b.getId(), flightId);
+    }
+
     @Transactional
     public BookingResponse update(String pnrCode, UpdateBookingRequest req){
         Booking b = bookingRepo.findByPnrCode(pnrCode)
@@ -111,5 +166,7 @@ public class BookingService {
         b.setUpdatedDate(LocalDateTime.now());
         bookingRepo.save(b);
     }
+
+    private static String emptyToNull(String s) { return (s == null || s.isBlank()) ? null : s; }
 }
 
