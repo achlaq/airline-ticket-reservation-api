@@ -36,7 +36,6 @@ public class BookingService {
     private final PassengerRepo passengerRepo;
     private final PnrService pnr;
 
-
     @Transactional
     public BookingResponse create(CreateBookingRequest req){
         Flight fl = flightRepo.findById(req.flightId())
@@ -75,37 +74,15 @@ public class BookingService {
         return new BookingResponse(bk.getPnrCode(), bk.getStatus(), bk.getTotalAmount(), bk.getId(), fl.getId());
     }
 
-    public Page<BookingListItem> search(
+    public List<BookingItem> search(
             String pnr, String status,
-            LocalDate from, LocalDate to,
-            int page, int size
+            LocalDate from, LocalDate to
     ) {
         final LocalDateTime fromDt = (from == null) ? null : from.atStartOfDay();
         final LocalDateTime toDt   = (to   == null) ? null : to.plusDays(1).atStartOfDay();
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
-        if (fromDt != null && toDt != null && !toDt.isAfter(fromDt)) {
-            return Page.empty(pageable);
-        }
-
-        List<Specification<Booking>> specs = new ArrayList<>();
-        if (pnr != null && !pnr.isBlank()) {
-            specs.add((root, q, cb) -> cb.equal(root.get("pnrCode"), pnr));
-        }
-        if (status != null && !status.isBlank()) {
-            specs.add((root, q, cb) -> cb.equal(root.get("status"), status));
-        }
-        if (fromDt != null) {
-            specs.add((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("createdDate"), fromDt));
-        }
-        if (toDt != null) {
-            specs.add((root, q, cb) -> cb.lessThan(root.get("createdDate"), toDt));
-        }
-
-        Specification<Booking> spec = Specification.allOf(specs);
-
-        return bookingRepo.findAll(spec, pageable)
-                .map(b -> new BookingListItem(
+        return bookingRepo.getBookings(normalizeString(pnr), normalizeString(status), fromDt, toDt)
+                .stream().map(b -> new BookingItem(
                         b.getPnrCode(),
                         b.getStatus(),
                         b.getContactName(),
@@ -113,10 +90,8 @@ public class BookingService {
                         b.getContactPhone(),
                         b.getTotalAmount(),
                         b.getCreatedDate()
-                ));
+                )).toList();
     }
-
-
 
     public BookingResponse get(UUID id){
         Booking b = bookingRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Booking not found"));
@@ -167,6 +142,9 @@ public class BookingService {
         bookingRepo.save(b);
     }
 
-    private static String emptyToNull(String s) { return (s == null || s.isBlank()) ? null : s; }
+    private String normalizeString(String s) {
+        if (s == null || s.isBlank()) return null;
+        return s.trim();
+    }
 }
 
