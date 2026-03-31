@@ -1,39 +1,50 @@
-# 🚀 airline-ticket-reservation-api
+# Airline Ticket Reservation API
 
-Aplikasi backend menggunakan **Spring Boot** dengan REST API untuk mengelola aplikasi pemesanan tiket maskapai.
+This project is a backend application built with Spring Boot, providing a RESTful API for managing an airline ticket reservation system.
 
----
+## Tech Stack
 
-## 🛠️ Tech Stack
-- [Java 17+](https://adoptium.net/)
-- [Spring Boot 3.x](https://spring.io/projects/spring-boot)
-- [Maven](https://maven.apache.org/)
-- Database: PostgreSQL, Flyway
+*   **Java:** 17
+*   **Spring Boot:** 3.x
+*   **Database:** PostgreSQL
+*   **Database Migration:** Flyway
+*   **Build Tool:** Maven
 
----
+## Prerequisites
 
-## 📦 Installation & Running
+Before you begin, ensure you have the following installed:
 
-### 1. Clone repository
+*   JDK 17 or later
+*   Maven 3.6 or later
+*   PostgreSQL
+
+## Getting Started
+
+### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/achlaq/airline-ticket-reservation-api.git
 cd airline-ticket-reservation-api
 ```
 
-### 2. Configure Database
-```sql
-CREATE DATABASE flightdb;
-```
+### 2. Configure the Database
 
-```yaml
-spring.datasource.url=jdbc:postgresql://localhost:[your-port]/flightdb
-spring.datasource.username=[your-username]
-spring.datasource.password=[your-password]
-```
+1.  Create a new PostgreSQL database.
+    ```sql
+    CREATE DATABASE flightdb;
+    ```
+2.  Update the `src/main/resources/application.properties` file with your database credentials.
 
-### 3. Jalankan aplikasi
+    ```properties
+    spring.datasource.url=jdbc:postgresql://localhost:5432/flightdb
+    spring.datasource.username=<your-username>
+    spring.datasource.password=<your-password>
+    ```
+
+### 3. Run the Application
+
 ```bash
 ./mvnw spring-boot:run
 ```
 
-👉 Access on http://localhost:8899
+The application will be accessible at `http://localhost:8899`.
